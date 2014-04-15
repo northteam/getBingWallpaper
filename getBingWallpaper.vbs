@@ -4,9 +4,14 @@
 On Error Resume Next
 
 Function GetFileDirectory(filePath)
+    Dim objFSO
     Dim fileDirectory
 
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
+
     fileDirectory = objFSO.GetParentFolderName(filePath)
+
+    Set objFSO = Nothing
 
     GetFileDirectory = fileDirectory
 End Function
@@ -38,12 +43,12 @@ End Sub
 
 Function CreatePath(path)
     Dim objFSO
-    Dim parrentPath
+    Dim parentPath
 
     Set objFSO = CreateObject("Scripting.FileSystemObject") 
-    parrentPath = objFSO.GetParentFolderName(path)
-    If Not objFSO.FolderExists(parrentPath) Then
-        CreatePath(parrentPath)
+    parentPath = objFSO.GetParentFolderName(path)
+    If Not objFSO.FolderExists(parentPath) Then
+        CreatePath(parentPath)
     End If
     objFSO.CreateFolder path
 
@@ -51,14 +56,14 @@ Function CreatePath(path)
 End Function
 
 
-Function CreateParrentPath(filePath)
+Function CreateParentPath(filePath)
     Dim objFSO
-    Dim parrentPath
+    Dim parentPath
 
     Set objFSO = CreateObject("Scripting.FileSystemObject") 
-    parrentPath = objFSO.GetParentFolderName(filePath)
-    If Not objFSO.FolderExists(parrentPath) Then
-        CreatePath(parrentPath)
+    parentPath = objFSO.GetParentFolderName(filePath)
+    If Not objFSO.FolderExists(parentPath) Then
+        CreatePath(parentPath)
     End If
 End Function
 
@@ -159,12 +164,34 @@ Function Wget(imageUrl, imagePath)
 End Function
 
 
+Function GetSetBackgroundStr()
+    Dim objShell
+    Dim setBackgroundStr, uiLanguages
+
+    setBackgroundStr = "Set as desktop background"
+
+    Set objShell = WScript.CreateObject("WScript.Shell")
+    uiLanguages = objShell.RegRead("HKCU\Control Panel\Desktop\PreferredUILanguages")
+    Set objShell = Nothing
+
+    If UBound(uiLanguages) > 0 Then
+        Select Case uiLanguages(0)
+            Case "en-US"
+                setBackgroundStr = "Set as desktop background"
+            Case "zh-CN"
+                setBackgroundStr = "设置为桌面背景"
+        End Select
+    End If
+
+    GetSetBackgroundStr = setBackgroundStr
+End Function
+
+
 Sub SetWallpaper(imageFullPath)
-    Dim objFSO, objFile, imagePath, imageName
+    Dim objFSO, objFile, imagePath, imageName, setBackgroundStr
     Dim objShell, objFolder, objFolderItem, colVerbs
 
     If IsNull(imageFullPath) Or IsEmpty(imageFullPath) Or imageFullPath = "" Then
-        'MsgBox "Empty imageFullPath: " & imageFullPath
         Exit Sub
     End If
 
@@ -178,8 +205,10 @@ Sub SetWallpaper(imageFullPath)
     Set objFolderItem = objFolder.ParseName(imageName)
     Set colVerbs = objFolderItem.Verbs
 
+    setBackgroundStr = GetSetBackgroundStr()
+
     For Each objVerb in colVerbs
-        If InStr(objVerb, "设置为桌面背景") <> 0 Then
+        If InStr(Replace(objVerb, "&", ""), setBackgroundStr) <> 0 Then
             objVerb.DoIt
             wscript.sleep(2000)
             Exit For
@@ -285,7 +314,7 @@ Sub SetLogonBackground(imagePath)
     End If
 
     oemImagePath = GetOEMImagePath()
-    CreateParrentPath(oemImagePath)
+    CreateParentPath(oemImagePath)
     logonBackgroundPath = GetImageDirectory() & "\logonBackground.jpg"
     CompressJPEG imagePath, logonBackgroundPath, MAX_IMAGE_SIZE
     DeleteFile(oemImagePath)
