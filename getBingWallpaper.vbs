@@ -164,24 +164,49 @@ Function Wget(imageUrl, imagePath)
 End Function
 
 
-Function GetSetBackgroundStr()
-    Dim objShell
-    Dim setBackgroundStr, uiLanguages
-
-    setBackgroundStr = "Set as desktop background"
+Function GetOSLanguage()
+    Dim osLanguageStr, uiLanguages
 
     Set objShell = WScript.CreateObject("WScript.Shell")
-    uiLanguages = objShell.RegRead("HKCU\Control Panel\Desktop\PreferredUILanguages")
+
+    ' Detect language for windows 7 with multiple language packs installed
+    If IsEmpty(osLanguageStr) Then
+        uiLanguages = objShell.RegRead("HKCU\Control Panel\Desktop\PreferredUILanguages")
+
+        If UBound(uiLanguages) >= 0 Then
+            Select Case uiLanguages(0)
+                Case "en-US"
+                    osLanguageStr = "en-US"
+                Case "zh-CN"
+                    osLanguageStr = "zh-CN"
+            End Select
+        End If
+    End If
+
+    ' Detect language using WMI
+    If IsEmpty(osLanguageStr) Then
+        ' TODO
+    End If
+
     Set objShell = Nothing
 
-    If UBound(uiLanguages) > 0 Then
-        Select Case uiLanguages(0)
-            Case "en-US"
-                setBackgroundStr = "Set as desktop background"
-            Case "zh-CN"
-                setBackgroundStr = "设置为桌面背景"
-        End Select
-    End If
+    GetOSLanguage = osLanguageStr
+End Function
+
+
+Function GetSetBackgroundStr()
+    Dim objShell
+    Dim setBackgroundStr, osLanguageStr
+
+    setBackgroundStr = "Set as desktop background"
+    osLanguageStr = GetOSLanguage()
+
+    Select Case osLanguageStr
+        Case "en-US"
+            setBackgroundStr = "Set as desktop background"
+        Case "zh-CN"
+            setBackgroundStr = "设置为桌面背景"
+    End Select
 
     GetSetBackgroundStr = setBackgroundStr
 End Function
