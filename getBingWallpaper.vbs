@@ -46,11 +46,13 @@ Function CreatePath(path)
     Dim parentPath
 
     Set objFSO = CreateObject("Scripting.FileSystemObject") 
-    parentPath = objFSO.GetParentFolderName(path)
-    If Not objFSO.FolderExists(parentPath) Then
-        CreatePath(parentPath)
+    If Not objFSO.FolderExists(path) Then
+        parentPath = objFSO.GetParentFolderName(path)
+        If Not objFSO.FolderExists(parentPath) Then
+            CreatePath(parentPath)
+        End If
+        objFSO.CreateFolder path
     End If
-    objFSO.CreateFolder path
 
     CreatePath = objFSO.FolderExists(path)
 End Function
@@ -62,9 +64,7 @@ Function CreateParentPath(filePath)
 
     Set objFSO = CreateObject("Scripting.FileSystemObject") 
     parentPath = objFSO.GetParentFolderName(filePath)
-    If Not objFSO.FolderExists(parentPath) Then
-        CreatePath(parentPath)
-    End If
+    CreatePath(parentPath)
 End Function
 
 
@@ -80,7 +80,8 @@ Function GetImageUrlList(xmlUrl)
         Set us = objXML.documentElement.getElementsByTagName("urlBase")
         Redim imageUrlList(us.length-1)
         For i = 0 To us.length-1
-            imageUrlList(i) = "http://www.bing.com" & us(i).text & "_1920x1200.jpg"
+            'imageUrlList(i) = "http://cn.bing.com" & us(i).text & "_1920x1200.jpg"
+            imageUrlList(i) = "http://s.cn.bing.net" & us(i).text & "_1920x1080.jpg"
         Next
 
         xmlLocalPath = GetScriptDirectory() & "\bing.xml"
@@ -103,9 +104,20 @@ End Function
 
 
 Function GetImageDirectory
-    Dim scriptDirectory
+    Dim scriptDirectory, imageDirectory
     scriptDirectory = GetScriptDirectory()
-    GetImageDirectory = scriptDirectory & "\wallpapers"
+    imageDirectory = scriptDirectory & "\wallpapers"
+    CreatePath(imageDirectory)
+    GetImageDirectory = imageDirectory
+End Function
+
+
+Function GetQuickViewDirectory
+    Dim scriptDirectory, quickViewDirectory
+    scriptDirectory = GetScriptDirectory()
+    quickViewDirectory = scriptDirectory & "\quickview"
+    CreatePath(quickViewDirectory)
+    GetQuickViewDirectory = quickViewDirectory
 End Function
 
 
@@ -115,6 +127,7 @@ Function GetImage(imageUrlList)
 
     If UBound(imageUrlList) > 0 Then
         imageUrl = imageUrlList(0)
+        'MsgBox imageUrl
         imageLocalFullName = Wget(imageUrl, imagePath)
     End If
 
@@ -125,13 +138,9 @@ End Function
 Function Wget(imageUrl, imagePath)
     Dim imageFileName, imageFullPath, objFSO, objXMLHTTP, retries
     imageFileName = Mid(imageUrl, InStrRev(imageUrl, "/")+1)
-    Set objFSO = CreateObject("Scripting.FileSystemObject")
-    If Not objFSO.FolderExists(imagePath) Then
-        CreatePath(imagePath)
-    End If
-
     imageFullPath = imagePath & "\" & imageFileName
 
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
     If Not objFSO.FileExists(imageFullPath) Then
         Set objXMLHTTP = CreateObject("MSXML2.XMLHTTP")
         retries = 3
@@ -169,6 +178,8 @@ Function GetOSLanguage()
 
     Set objShell = WScript.CreateObject("WScript.Shell")
 
+    osLanguageStr = "zh-CN"
+
     ' Detect language for windows 7 with multiple language packs installed
     If IsEmpty(osLanguageStr) Then
         uiLanguages = objShell.RegRead("HKCU\Control Panel\Desktop\PreferredUILanguages")
@@ -186,6 +197,7 @@ Function GetOSLanguage()
     ' Detect language using WMI
     If IsEmpty(osLanguageStr) Then
         ' TODO
+        osLanguageStr = "zh-CN"
     End If
 
     Set objShell = Nothing
@@ -213,15 +225,18 @@ End Function
 
 
 Sub SetWallpaper(imageFullPath)
-    Dim objFSO, objFile, imagePath, imageName, setBackgroundStr
+    Dim objFSO, objFile, imagePath, imageName, setBackgroundStr, quickViewImageFullPath
     Dim objShell, objFolder, objFolderItem, colVerbs
 
     If IsNull(imageFullPath) Or IsEmpty(imageFullPath) Or imageFullPath = "" Then
         Exit Sub
     End If
 
+    quickViewImageFullPath = GetQuickViewDirectory() & "\background.jpg"
+    CopyFile imageFullPath, quickViewImageFullPath
+
     Set objFSO = CreateObject("Scripting.FileSystemObject")
-    Set objFile = objFSO.GetFile(imageFullPath)
+    Set objFile = objFSO.GetFile(quickViewImageFullPath)
     imagePath = objFile.ParentFolder
     imageName = objFile.Name
 
@@ -340,7 +355,7 @@ Sub SetLogonBackground(imagePath)
 
     oemImagePath = GetOEMImagePath()
     CreateParentPath(oemImagePath)
-    logonBackgroundPath = GetImageDirectory() & "\logonBackground.jpg"
+    logonBackgroundPath = GetQuickViewDirectory() & "\logonBackground.jpg"
     CompressJPEG imagePath, logonBackgroundPath, MAX_IMAGE_SIZE
     DeleteFile(oemImagePath)
     CopyFile logonBackgroundPath, oemImagePath
@@ -348,7 +363,7 @@ Sub SetLogonBackground(imagePath)
 End Sub
 
 
-xmlUrl = "http://www.bing.com/hpimagearchive.aspx?format=xml&idx=0&n=23&mbl=1&mkt=en-ww"
+xmlUrl = "http://cn.bing.com/hpimagearchive.aspx?format=xml&idx=0&n=23&mbl=1&mkt=en-ww"
 imageUrlList = GetImageUrlList(xmlUrl)
 imageLocalPath = GetImage(imageUrlList)
 SetWallpaper imageLocalPath
